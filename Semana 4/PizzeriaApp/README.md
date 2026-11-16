@@ -51,6 +51,8 @@ La pantalla principal usa **cuatro pestañas** y organiza el registro en tres pa
 | 🛵 **Entrega** | Paso 3 | Zona, notas, fecha promocional y confirmación |
 | 📊 **Panel** | Seguimiento | Pedido, reporte del día y stock disponible |
 
+**Validación progresiva:** al continuar desde **Cliente**, se comprueban el nombre, la dirección y los datos opcionales ingresados (teléfono y correo), mostrando mensajes específicos junto a los campos incorrectos. En **Pizzas**, se exige seleccionar entre **1 y 100 unidades en total** antes de acceder a Entrega. La barra inferior respeta estas validaciones y evita saltarse pasos pendientes; el **Panel** permanece accesible para consultar pedidos anteriores. La confirmación vuelve a verificar los datos para impedir registros inválidos.
+
 La aplicación muestra el mensaje solicitado en la actividad:
 
 > **Bienvenidos a la mejor pizzería de la ciudad**
@@ -240,14 +242,22 @@ Este comando compila el APK de depuración. Para **abrir y utilizar la interfaz*
 ```text
 Abrir Donna Luna en Android
           ↓
-👤 Cliente → registrar y validar datos
+👤 Cliente → ingresar nombre, dirección y datos opcionales
           ↓
-🍕 Pizzas → seleccionar variedades y cantidades
+¿Datos del cliente válidos?
+    ├── No → Marcar campos y permanecer en Cliente
+    └── Sí → Continuar a Pizzas
+          ↓
+🍕 Pizzas → elegir variedades y cantidades
+          ↓
+¿Total entre 1 y 100 pizzas?
+    ├── No → Mostrar error y permanecer en Pizzas
+    └── Sí → Continuar a Entrega
           ↓
 🛵 Entrega → zona, notas y promoción opcional
           ↓
-¿Datos válidos y pedido con 1–100 pizzas?
-    ├── No → Mostrar aviso de corrección
+¿Confirmación válida?
+    ├── No → Mostrar error y volver al paso correspondiente
     └── Sí
           ↓
 ¿Inventario suficiente?

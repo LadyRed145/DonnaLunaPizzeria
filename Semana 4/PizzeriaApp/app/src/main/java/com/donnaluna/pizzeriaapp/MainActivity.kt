@@ -137,33 +137,66 @@ private fun PantallaDonnaLunaPremium() {
     var revision by remember { mutableIntStateOf(0) }
     var pagina by rememberSaveable { mutableIntStateOf(0) }
     var panelVista by rememberSaveable { mutableIntStateOf(0) }
+    var mostrarErroresCliente by rememberSaveable { mutableStateOf(false) }
+    var mostrarErrorPizzas by rememberSaveable { mutableStateOf(false) }
+    var mostrarErrorFecha by rememberSaveable { mutableStateOf(false) }
 
     fun totalPizzas() = cantidades.values.sum()
+
+    // Una sola fuente de errores para el formulario y la confirmación final.
+    val erroresCliente = revisarDatosCliente(nombre, direccion, telefono, correo)
+
+    fun validarPasoCliente(): Boolean {
+        mostrarErroresCliente = true
+        val error = revisarDatosCliente(nombre, direccion, telefono, correo).primerError()
+        if (error != null) {
+            aviso = error
+            return false
+        }
+        return true
+    }
+
+    fun validarPasoPizzas(): Boolean {
+        mostrarErrorPizzas = true
+        if (!esCantidadValida(totalPizzas())) {
+            aviso = Constantes.MENSAJE_CANTIDAD_TOTAL
+            return false
+        }
+        return true
+    }
+
+    fun navegarA(destino: Int) {
+        when (destino) {
+            0, 3 -> pagina = destino // El panel es de consulta y no exige un pedido en curso.
+            1 -> {
+                if (pagina == 2 || validarPasoCliente()) pagina = 1
+                else pagina = 0
+            }
+            2 -> {
+                if (!validarPasoCliente()) { pagina = 0; return }
+                if (!validarPasoPizzas()) { pagina = 1; return }
+                pagina = 2
+            }
+        }
+    }
 
     fun confirmarPedido() {
         val nombreLimpio = nombre.trim()
         val direccionLimpia = direccion.trim()
         val telefonoLimpio = telefono.trim()
         val correoLimpio = correo.trim()
-        val total = totalPizzas()
 
-        if (nombreLimpio.isBlank()) { aviso = "Ingresa el nombre del cliente."; return }
-        if (direccionLimpia.length < 4 || direccionLimpia.none { it.isLetter() } || '@' in direccionLimpia) {
-            aviso = "Ingresa una dirección física válida (mínimo 4 caracteres)."; return
-        }
-        if (telefonoLimpio.isNotBlank() && !esTelefonoValido(telefonoLimpio)) {
-            aviso = "Teléfono inválido. Usa 9 o 10 dígitos nacionales, o +56 seguido del número."; return
-        }
-        if (correoLimpio.isNotBlank() && !esCorreoValido(correoLimpio)) {
-            aviso = Constantes.MENSAJE_CORREO_INVALIDO; return
-        }
-        if (!esCantidadValida(total)) {
-            aviso = Constantes.MENSAJE_CANTIDAD_TOTAL; return
-        }
+        if (!validarPasoCliente()) { pagina = 0; return }
+        if (!validarPasoPizzas()) { pagina = 1; return }
 
         val promocion = if (usarPromocion) {
             val fecha = parsearFecha(fechaPromocion)
-            if (fecha == null) { aviso = Constantes.MENSAJE_FECHA_INVALIDA; return }
+            if (fecha == null) {
+                mostrarErrorFecha = true
+                aviso = Constantes.MENSAJE_FECHA_INVALIDA
+                return
+            }
+            mostrarErrorFecha = false
             PromocionesService.obtenerPromocion(fecha)
         } else null
 
@@ -197,6 +230,9 @@ private fun PantallaDonnaLunaPremium() {
             jornada.registrar(pedido, if (evaluacion.confirmado) zona else null)
             ultimoPedido = pedido
             cantidades.clear()
+            mostrarErroresCliente = false
+            mostrarErrorPizzas = false
+            mostrarErrorFecha = false
             revision++
             pagina = 3
             panelVista = 0
@@ -288,7 +324,7 @@ private fun PantallaDonnaLunaPremium() {
                 secciones.forEachIndexed { indice, item ->
                     NavigationBarItem(
                         selected = pagina == indice,
-                        onClick = { pagina = indice },
+                        onClick = { navegarA(indice) },
                         icon = { Text(item.icono, style = MaterialTheme.typography.titleLarge) },
                         label = { Text(item.titulo, maxLines = 1) },
                         alwaysShowLabel = true
@@ -319,21 +355,43 @@ private fun PantallaDonnaLunaPremium() {
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            OutlinedTextField(nombre, { nombre = it }, label = { Text("Nombre *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(direccion, { direccion = it }, label = { Text("Dirección *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                nombre, { nombre = it }, label = { Text("Nombre *") },
+                                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                                isError = mostrarErroresCliente && erroresCliente.nombre != null
+                            )
+                            if (mostrarErroresCliente && erroresCliente.nombre != null) {
+                                Text(erroresCliente.nombre, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
+                            OutlinedTextField(
+                                direccion, { direccion = it }, label = { Text("Dirección *") },
+                                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                                isError = mostrarErroresCliente && erroresCliente.direccion != null
+                            )
+                            if (mostrarErroresCliente && erroresCliente.direccion != null) {
+                                Text(erroresCliente.direccion, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
                             OutlinedTextField(
                                 telefono, { telefono = it }, label = { Text("Teléfono (opcional)") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                singleLine = true, modifier = Modifier.fillMaxWidth()
+                                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                                isError = mostrarErroresCliente && erroresCliente.telefono != null
                             )
+                            if (mostrarErroresCliente && erroresCliente.telefono != null) {
+                                Text(erroresCliente.telefono, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
                             OutlinedTextField(
                                 correo, { correo = it }, label = { Text("Correo (opcional)") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                                singleLine = true, modifier = Modifier.fillMaxWidth()
+                                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                                isError = mostrarErroresCliente && erroresCliente.correo != null
                             )
+                            if (mostrarErroresCliente && erroresCliente.correo != null) {
+                                Text(erroresCliente.correo, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                         MensajeDonna(aviso)
-                        Button(onClick = { pagina = 1 }, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { navegarA(1) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Continuar al menú de pizzas")
                         }
                     }
@@ -369,6 +427,9 @@ private fun PantallaDonnaLunaPremium() {
                         }
                         TarjetaDonna(destacada = true) {
                             FilaEtiquetaValor("Pizzas seleccionadas", "${totalPizzas()} / ${Constantes.CANTIDAD_MAXIMA}")
+                            if (mostrarErrorPizzas && !esCantidadValida(totalPizzas())) {
+                                Text(Constantes.MENSAJE_CANTIDAD_TOTAL, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            }
                             Text(
                                 if (totalPizzas() > 3) "Descuento por volumen aplicado al confirmar."
                                 else "Suma más de 3 pizzas para activar el descuento.",
@@ -377,7 +438,7 @@ private fun PantallaDonnaLunaPremium() {
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                        Button(onClick = { pagina = 2 }, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { navegarA(2) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Continuar a entrega y confirmación")
                         }
                     }
@@ -406,7 +467,15 @@ private fun PantallaDonnaLunaPremium() {
                                 Switch(checked = usarPromocion, onCheckedChange = { usarPromocion = it })
                             }
                             if (usarPromocion) {
-                                OutlinedTextField(fechaPromocion, { fechaPromocion = it }, label = { Text("Fecha ${Constantes.FORMATO_FECHA_TEXTO}") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                                OutlinedTextField(
+                                    fechaPromocion, { fechaPromocion = it },
+                                    label = { Text("Fecha ${Constantes.FORMATO_FECHA_TEXTO}") },
+                                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                                    isError = mostrarErrorFecha && parsearFecha(fechaPromocion) == null
+                                )
+                                if (mostrarErrorFecha && parsearFecha(fechaPromocion) == null) {
+                                    Text(Constantes.MENSAJE_FECHA_INVALIDA, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                }
                                 Text(
                                     Constantes.MENSAJE_VIGENCIA_PROMOCION,
                                     style = MaterialTheme.typography.bodySmall,
@@ -525,6 +594,37 @@ private fun PantallaDonnaLunaPremium() {
             }
         }
     }
+}
+
+private data class ErroresCliente(
+    val nombre: String? = null,
+    val direccion: String? = null,
+    val telefono: String? = null,
+    val correo: String? = null
+) {
+    fun primerError(): String? = nombre ?: direccion ?: telefono ?: correo
+}
+
+/** Validación común: los mismos mensajes se usan al avanzar y al confirmar. */
+private fun revisarDatosCliente(
+    nombre: String,
+    direccion: String,
+    telefono: String,
+    correo: String
+): ErroresCliente {
+    val nombreLimpio = nombre.trim()
+    val direccionLimpia = direccion.trim()
+    val telefonoLimpio = telefono.trim()
+    val correoLimpio = correo.trim()
+    return ErroresCliente(
+        nombre = if (nombreLimpio.isBlank()) "Ingresa el nombre del cliente." else null,
+        direccion = if (direccionLimpia.length < 4 || direccionLimpia.none { it.isLetter() } || '@' in direccionLimpia)
+            "Ingresa una dirección física válida (mínimo 4 caracteres)." else null,
+        telefono = if (telefonoLimpio.isNotBlank() && !esTelefonoValido(telefonoLimpio))
+            "Teléfono inválido. Usa 9 o 10 dígitos nacionales, o +56 seguido del número." else null,
+        correo = if (correoLimpio.isNotBlank() && !esCorreoValido(correoLimpio))
+            Constantes.MENSAJE_CORREO_INVALIDO else null
+    )
 }
 
 private data class BarraItem(val titulo: String, val icono: String)
