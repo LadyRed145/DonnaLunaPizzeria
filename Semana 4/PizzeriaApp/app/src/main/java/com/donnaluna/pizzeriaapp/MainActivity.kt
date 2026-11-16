@@ -131,7 +131,7 @@ private fun PantallaDonnaLunaPremium() {
     var notas by rememberSaveable { mutableStateOf("") }
     var zona by rememberSaveable { mutableStateOf("Centro") }
     var usarPromocion by rememberSaveable { mutableStateOf(false) }
-    var fechaPromocion by rememberSaveable { mutableStateOf("2026-11-15") }
+    var fechaPromocion by rememberSaveable { mutableStateOf(Constantes.FECHA_PREDETERMINADA_PROMOCION) }
     var aviso by remember { mutableStateOf("Bienvenida a Donna Luna. Completa tus datos para comenzar.") }
     var ultimoPedido by remember { mutableStateOf<Pedido?>(null) }
     var revision by remember { mutableIntStateOf(0) }
@@ -368,7 +368,7 @@ private fun PantallaDonnaLunaPremium() {
                             )
                         }
                         TarjetaDonna(destacada = true) {
-                            FilaEtiquetaValor("Pizzas seleccionadas", "${totalPizzas()} / 100")
+                            FilaEtiquetaValor("Pizzas seleccionadas", "${totalPizzas()} / ${Constantes.CANTIDAD_MAXIMA}")
                             Text(
                                 if (totalPizzas() > 3) "Descuento por volumen aplicado al confirmar."
                                 else "Suma más de 3 pizzas para activar el descuento.",

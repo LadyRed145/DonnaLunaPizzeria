@@ -15,6 +15,7 @@ object Constantes {
     const val PORCENTAJE_IVA = 19
     const val CANTIDAD_MINIMA = 1
     const val CANTIDAD_MAXIMA = 100
+    const val FECHA_PREDETERMINADA_PROMOCION = "2026-11-15"
     const val FECHA_INICIO_PROMOCION = "2026-11-01"
     const val FECHA_FIN_PROMOCION = "2026-11-30"
     const val FORMATO_FECHA_TEXTO = "AAAA-MM-DD"
